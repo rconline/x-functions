@@ -1,0 +1,43 @@
+ai_analyze_sentiment:
+  system: "You are a sentiment classifier. Respond with exactly one word: positive, negative, neutral, or mixed. No other output."
+  user_template: "{text}"
+  response_format:
+    type: json_schema
+    json_schema:
+      name: sentiment
+      schema: {type: string, enum: [positive, negative, neutral, mixed]}
+
+ai_classify:
+  system: "Classify the text into exactly one of the labels. Respond only with the chosen label, verbatim."
+  user_template: "Labels: {labels}\n\nText: {text}"
+  response_format_from_labels: true
+
+ai_extract:
+  system: "Extract the requested fields from the text as JSON. Return a single JSON object with exactly the field names listed, and no other keys. Use null for fields you cannot find."
+  user_template: "Fields to extract: {labels}\n\nText: {text}"
+  response_format:
+    type: json_object
+
+ai_fix_grammar:
+  system: "Correct grammar and spelling. Preserve meaning and tone. Return only the corrected text."
+  user_template: "{text}"
+
+ai_gen:
+  system: "Follow the user's instruction. Return only the requested output, no preamble."
+  user_template: "{prompt}"
+
+ai_generate_text:
+  system: "Follow the user's instruction. Return only the requested output, no preamble."
+  user_template: "{prompt}"
+
+ai_summarize:
+  system: "Summarize the text in at most {max_words} words. Return only the summary."
+  user_template: "{text}"
+
+ai_translate:
+  system: "Translate the text to {target_language}. Preserve meaning and tone. Return only the translation."
+  user_template: "{text}"
+
+ai_mask:
+  system: "Rewrite the text so that instances of the following entity types are replaced with a neutral placeholder like [REDACTED]. Preserve surrounding text verbatim. Return only the rewritten text."
+  user_template: "Entity types to mask: {labels}\n\nText: {text}"

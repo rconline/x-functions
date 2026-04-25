@@ -1,0 +1,126 @@
+<?xml version="1.0"?>
+<!--
+  Ambari/ODP/xDP service template for spark-ai-functions.
+
+  This file is intended to be rendered into your service config and then
+  exported as environment variables for the Spark driver/executors.
+  `register_from_env(spark)` reads these values.
+-->
+<configuration>
+  <property>
+    <name>SPARK_AI_MODE</name>
+    <value>standalone</value>
+    <description>auto|standalone|governed</description>
+  </property>
+
+  <property>
+    <name>SPARK_AI_GRAVITINO_URI</name>
+    <value>http://gravitino.prod.internal:8090</value>
+    <description>Required when SPARK_AI_MODE=governed.</description>
+  </property>
+  <property>
+    <name>SPARK_AI_METALAKE</name>
+    <value>prod</value>
+  </property>
+  <property>
+    <name>SPARK_AI_CATALOG</name>
+    <value>ai_functions</value>
+  </property>
+  <property>
+    <name>SPARK_AI_ENDPOINTS_SCHEMA</name>
+    <value>endpoints</value>
+  </property>
+  <property>
+    <name>SPARK_AI_FUNCTIONS_SCHEMA</name>
+    <value>functions</value>
+  </property>
+
+  <property>
+    <name>SPARK_AI_DEFAULT_ENDPOINT</name>
+    <value>internal-llm</value>
+    <description>Default endpoint used by preset SQL functions.</description>
+  </property>
+  <property>
+    <name>SPARK_AI_DEFAULT_EMBEDDING_ENDPOINT</name>
+    <value>openai-embed-3-small</value>
+  </property>
+
+  <!-- Optional: function subset and plugin-check behavior -->
+  <property>
+    <name>SPARK_AI_FUNCTION_NAMES</name>
+    <value>ai_query,ai_mask,ai_parse_document,ai_similarity,ai_prep_search</value>
+  </property>
+  <property>
+    <name>SPARK_AI_SKIP_PLUGIN_CHECK</name>
+    <value>false</value>
+  </property>
+
+  <!-- Optional: override packaged prompt presets -->
+  <property>
+    <name>SPARK_AI_PRESETS_PATH</name>
+    <value></value>
+  </property>
+
+  <!--
+    Endpoint inventory can be provided inline (below) or by path
+    (SPARK_AI_ENDPOINTS_JSON_PATH). Inline is convenient for Ambari config.
+  -->
+  <property>
+    <name>SPARK_AI_ENDPOINTS_JSON</name>
+    <value><![CDATA[
+{
+  "endpoints": [
+    {
+      "name": "bedrock-claude-sonnet",
+      "endpoint_type": "bedrock_chat",
+      "base_url": "bedrock://us-west-2",
+      "model_id": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+      "credential_name": "bedrock-prod",
+      "default_params": {"temperature": 0.0},
+      "data_residency": "external"
+    },
+    {
+      "name": "openai-direct",
+      "endpoint_type": "openai_chat",
+      "base_url": "https://api.openai.com/v1",
+      "model_id": "gpt-4o-mini",
+      "credential_name": "openai-prod",
+      "data_residency": "external"
+    },
+    {
+      "name": "openai-embed-3-small",
+      "endpoint_type": "openai_embedding",
+      "base_url": "https://api.openai.com/v1",
+      "model_id": "text-embedding-3-small",
+      "credential_name": "openai-prod",
+      "data_residency": "external"
+    },
+    {
+      "name": "internal-llm",
+      "endpoint_type": "openai_chat",
+      "base_url": "https://llm-gateway.internal.company/v1",
+      "model_id": "llama-3.3-70b-instruct",
+      "credential_name": "internal-llm",
+      "data_residency": "internal"
+    }
+  ]
+}
+    ]]></value>
+    <description>Provider inventory: Bedrock + direct OpenAI + internal endpoint.</description>
+  </property>
+
+  <property>
+    <name>SPARK_AI_ENDPOINTS_JSON_PATH</name>
+    <value></value>
+    <description>Optional path to endpoints JSON file if not using inline JSON.</description>
+  </property>
+
+  <!--
+    Secrets are intentionally not stored in service-site.xml.
+    Inject from credential provider / secret manager:
+      SPARK_AI_ENDPOINT_BEDROCK_CLAUDE_SONNET__API_KEY
+      SPARK_AI_ENDPOINT_OPENAI_DIRECT__API_KEY
+      SPARK_AI_ENDPOINT_OPENAI_EMBED_3_SMALL__API_KEY
+      SPARK_AI_ENDPOINT_INTERNAL_LLM__API_KEY
+  -->
+</configuration>

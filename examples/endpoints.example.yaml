@@ -1,0 +1,26 @@
+endpoints:
+  - name: openai-gpt-4o-mini
+    endpoint_type: openai_chat
+    base_url: https://api.openai.com/v1
+    model_id: gpt-4o-mini
+    credential_name: openai
+    default_params:
+      temperature: 0.0
+      max_tokens: 1024
+    data_residency: external
+
+  - name: openai-text-embedding-3-small
+    endpoint_type: openai_embedding
+    base_url: https://api.openai.com/v1
+    model_id: text-embedding-3-small
+    credential_name: openai
+    data_residency: external
+
+  - name: local-llama
+    endpoint_type: openai_chat
+    base_url: http://localhost:11434/v1
+    model_id: llama3.1
+    credential_name: ollama
+    default_params:
+      temperature: 0.0
+    data_residency: internal

@@ -1,0 +1,112 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spark-ai-functions"
+version = "0.3.0"
+description = "Databricks AI Functions parity for Apache Spark, governed through Gravitino + Ranger."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [{name = "Spark AI Functions contributors"}]
+keywords = ["spark", "ai", "llm", "gravitino", "ranger", "databricks", "udf"]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "pyspark>=3.4,<4",
+    "openai>=1.40",
+    "mlflow>=2.14",                     # See SECURITY.md — CVE surface is tracking-server, which we do not expose.
+    "pydantic>=2.7",                    # 2.5 floor was precautionary; 2.7 first clean minor.
+    "pyyaml>=6.0.1",                    # CVE-2020-14343 fixed in 5.4; 6.0.1 is modern floor.
+    "jsonschema>=4.20",
+    "tiktoken>=0.7",
+    "prophet>=1.1.5",
+    "presidio-analyzer>=2.2",
+    "presidio-anonymizer>=2.2",
+    "docling>=1.0",
+    "pandas>=2.0",
+    "numpy>=1.24",
+    # Transitive overrides (see SECURITY.md):
+    "requests>=2.33.0",                 # CVE-2026-25645
+    "urllib3>=2.6.3",                   # CVE-2026-21441
+    "certifi>=2024.7.4",                # CVE-2023-37920 era trust-bundle churn
+    "cryptography>=46.0.7,<47",         # CVE-2026-26007 / CVE-2026-34073 / CVE-2026-39892 — upper bound matches mlflow's <47
+    "jinja2>=3.1.6",                    # CVE-2025-27516
+]
+
+[project.optional-dependencies]
+governance = [
+    "apache-gravitino>=1.2.0",
+    "requests>=2.33.0",                 # CVE-2026-25645
+    # Upstream apache-gravitino 1.2.0 requires `black` at install time (known bug);
+    # pin through a non-vulnerable floor until they drop or patch it.
+    "black>=26.3.1",                    # CVE-2026-32274
+]
+dev = [
+    "pytest>=8.3",
+    "pytest-mock>=3.14",
+    "pytest-cov>=5.0",
+    "responses>=0.25",
+    "ruff>=0.6",
+    "testcontainers>=4.8",
+    "pip-audit>=2.7",
+]
+anthropic = ["anthropic>=0.25"]
+bedrock = ["boto3>=1.34"]
+
+[project.scripts]
+spark-ai-functions = "spark_ai_functions.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/apache/spark-ai-functions"
+Documentation = "https://github.com/apache/spark-ai-functions/tree/main/docs"
+Issues = "https://github.com/apache/spark-ai-functions/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+spark_ai_functions = ["presets/*.yaml", "schemas/*.json"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+markers = [
+    "integration: requires network or live services (OPENAI_API_KEY, docker stack, etc.)",
+    "governed: requires the docker-compose governance stack (SPARK_AI_GOVERNED_TESTS=1)",
+    "slow: expensive tests",
+]
+addopts = [
+    "-ra",
+    "--strict-markers",
+]
+
+[tool.coverage.run]
+source = ["spark_ai_functions"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["docker", "examples/notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]

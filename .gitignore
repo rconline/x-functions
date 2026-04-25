@@ -1,0 +1,45 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.log
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Notebook outputs
+.ipynb_checkpoints/
+
+# Docker volumes
+docker/data/
+docker/.env.local
+
+# Spark
+metastore_db/
+spark-warehouse/
+derby.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local credentials
+.env
+.env.local
+*.pem
+*.key

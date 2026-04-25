@@ -1,0 +1,93 @@
+# Adapted from apache/gravitino-playground (Apache 2.0). See docker/README.md.
+#
+# Provenance: https://github.com/apache/gravitino-playground/blob/main/docker-compose.yaml
+#
+# Stripped of: trino, jupyter, prometheus, grafana, hive, hdfs, postgres.
+# Kept: gravitino, ranger, mysql (gravitino storage), spark.
+#
+# Exposed host ports mirror the playground layout (prefix 1 to dodge conflicts).
+
+services:
+  ranger:
+    image: apache/gravitino-playground:${RANGER_IMAGE_TAG:-ranger-0.1.0}
+    container_name: sparkai-ranger
+    ports:
+      - "6080:6080"
+    entrypoint: /bin/bash /tmp/ranger/init.sh
+    volumes:
+      - ./healthcheck:/tmp/healthcheck
+      - ./init/ranger:/tmp/ranger
+    healthcheck:
+      test: ["CMD", "/tmp/healthcheck/ranger-healthcheck.sh"]
+      interval: 5s
+      timeout: 60s
+      retries: 10
+      start_period: 120s
+
+  mysql:
+    image: mysql:${MYSQL_IMAGE_TAG:-8.0}
+    container_name: sparkai-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=mysql
+      - MYSQL_USER=mysql
+      - MYSQL_PASSWORD=mysql
+      - MYSQL_DATABASE=db
+    ports:
+      - "13306:3306"
+    volumes:
+      - ./init/mysql:/docker-entrypoint-initdb.d/
+      - ./healthcheck:/tmp/healthcheck
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+      --explicit_defaults_for_timestamp=true
+      --lower_case_table_names=1
+    healthcheck:
+      test: ["CMD", "/bin/bash", "/tmp/healthcheck/mysql-healthcheck.sh"]
+      interval: 5s
+      timeout: 60s
+      retries: 5
+      start_period: 20s
+
+  gravitino:
+    image: apache/gravitino:${GRAVITINO_IMAGE_TAG:-1.2.0}
+    container_name: sparkai-gravitino
+    entrypoint: /bin/bash /tmp/gravitino/init.sh
+    ports:
+      - "8090:8090"
+      - "9001:9001"
+    depends_on:
+      ranger:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./healthcheck:/tmp/healthcheck
+      - ./init/gravitino:/tmp/gravitino
+      - ./data/gravitino/db:/root/gravitino/data
+    healthcheck:
+      test: ["CMD", "/tmp/healthcheck/gravitino-healthcheck.sh"]
+      interval: 5s
+      timeout: 60s
+      retries: 10
+      start_period: 30s
+
+  spark:
+    image: spark:${SPARK_IMAGE_TAG:-3.4.1-scala2.12-java11-ubuntu}
+    container_name: sparkai-spark
+    depends_on:
+      gravitino:
+        condition: service_healthy
+    entrypoint: /bin/bash /tmp/spark/init.sh
+    environment:
+      - HADOOP_USER_NAME=root
+      - SPARK_CONNECTOR_JAR=${SPARK_CONNECTOR_JAR:-gravitino-spark-connector-runtime-3.4_2.12-1.2.0.jar}
+      - GRAVITINO_VERSION=${GRAVITINO_VERSION:-1.2.0}
+    ports:
+      - "14040:4040"
+    volumes:
+      - ./init/spark:/tmp/spark
+      - ./init/common:/tmp/common
+      # Project source mount so the container can `pip install -e`.
+      - ../:/workspace/spark-ai-functions
