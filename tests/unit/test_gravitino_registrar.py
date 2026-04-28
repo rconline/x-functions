@@ -88,6 +88,21 @@ def test_ensure_registered_raises_when_alter_and_replace_fail():
         registrar.ensure_registered([f for f in CANONICAL_FUNCTIONS if f.name == "ai_query"])
 
 
+class _ExplodingFnSchema(_FnSchema):
+    def load_function(self, name):  # noqa: ARG002
+        raise RuntimeError("backend unavailable")
+
+
+def test_ensure_registered_propagates_unexpected_load_errors():
+    schema = _ExplodingFnSchema()
+    registrar = GravitinoUDFRegistrar(
+        gravitino_uri="http://g:8090", metalake="m", catalog="c",
+        client=_FnClient(schema),
+    )
+    with pytest.raises(RuntimeError, match="backend unavailable"):
+        registrar.ensure_registered([f for f in CANONICAL_FUNCTIONS if f.name == "ai_query"])
+
+
 class _ModelSchema:
     def __init__(self):
         self.models: dict[str, dict] = {}
@@ -130,3 +145,28 @@ def test_register_endpoint_model_happy_path():
     assert props["endpoint_type"] == "openai_chat"
     assert props["default_params"] == '{"temperature": 0.0}'
     assert props["data_residency"] == "external"
+
+
+class _BrokenModelCatalog(_ModelCatalog):
+    def load_schema(self, name):  # noqa: ARG002
+        raise RuntimeError("catalog offline")
+
+
+class _BrokenModelClient:
+    def __init__(self, schema):
+        self._s = schema
+
+    def load_catalog(self, name):  # noqa: ARG002
+        return _BrokenModelCatalog(self._s)
+
+
+def test_register_endpoint_model_propagates_unexpected_schema_errors():
+    schema = _ModelSchema()
+    with pytest.raises(RuntimeError, match="catalog offline"):
+        register_endpoint_model(
+            gravitino_uri="http://g:8090", metalake="m", catalog="c", schema="endpoints",
+            name="gpt-4o-mini", endpoint_type="openai_chat",
+            base_url="https://api.openai.com/v1", model_id="gpt-4o-mini",
+            credential_name="openai-prod",
+            client=_BrokenModelClient(schema),
+        )

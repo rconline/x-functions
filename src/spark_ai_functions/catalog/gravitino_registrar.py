@@ -102,10 +102,17 @@ class GravitinoUDFRegistrar:
                 udf_cat = catalog
         try:
             return udf_cat.load_schema(self._schema)
-        except Exception:
+        except AttributeError:
             try:
                 return udf_cat.schema(self._schema)  # type: ignore[attr-defined]
-            except Exception:
+            except AttributeError:
+                return udf_cat.create_schema(self._schema)  # type: ignore[attr-defined]
+        except Exception as e:
+            if not _is_not_found_error(e):
+                raise
+            try:
+                return udf_cat.schema(self._schema)  # type: ignore[attr-defined]
+            except AttributeError:
                 return udf_cat.create_schema(self._schema)  # type: ignore[attr-defined]
 
     def ensure_registered(self, specs: Optional[list[FunctionSpec]] = None) -> list[str]:
@@ -135,8 +142,13 @@ class GravitinoUDFRegistrar:
         try:
             schema.load_function(spec.name)  # type: ignore[attr-defined]
             exists = True
-        except Exception:
+        except AttributeError:
             exists = False
+        except Exception as e:
+            if _is_not_found_error(e):
+                exists = False
+            else:
+                raise
 
         if exists:
             try:
@@ -190,7 +202,11 @@ def register_endpoint_model(
         model_cat = cat
     try:
         sch = model_cat.load_schema(schema)
-    except Exception:
+    except AttributeError:
+        sch = model_cat.create_schema(schema)  # type: ignore[attr-defined]
+    except Exception as e:
+        if not _is_not_found_error(e):
+            raise
         sch = model_cat.create_schema(schema)  # type: ignore[attr-defined]
     props = {
         "endpoint_type": endpoint_type,
@@ -204,3 +220,14 @@ def register_endpoint_model(
         sch.register_model(name=name, comment=f"Registered by spark-ai-functions", properties=props)  # type: ignore[attr-defined]
     except AttributeError:
         sch.create_model(name=name, comment=f"Registered by spark-ai-functions", properties=props)  # type: ignore[attr-defined]
+
+
+def _is_not_found_error(exc: Exception) -> bool:
+    name = type(exc).__name__.lower()
+    msg = str(exc).lower()
+    return (
+        "notfound" in name
+        or "not found" in msg
+        or "does not exist" in msg
+        or isinstance(exc, (KeyError, LookupError))
+    )

@@ -10,10 +10,18 @@ Notes:
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 from typing import Iterable
 
 import pandas as pd
 import pytest
+
+# Ensure tests work without requiring editable install or manual PYTHONPATH.
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
 from spark_ai_functions.endpoints.registry import EndpointConfig, EndpointRegistry
 from spark_ai_functions.endpoints.yaml_source import InMemoryEndpointSource

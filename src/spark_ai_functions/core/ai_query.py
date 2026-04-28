@@ -139,6 +139,9 @@ def _labels_from_series(labels: pd.Series) -> list[str]:
     raw = labels.iloc[0] if len(labels) else None
     if raw is None:
         return []
+    if isinstance(raw, str):
+        # Accept either comma-separated labels or a single label string.
+        return [s.strip() for s in raw.split(",") if s.strip()]
     return list(raw)
 
 

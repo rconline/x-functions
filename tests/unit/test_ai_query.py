@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from spark_ai_functions.core.ai_query import _core_ai_query
+from spark_ai_functions.core.ai_query import _core_ai_query, ai_classify_impl, ai_extract_impl
 from spark_ai_functions.endpoints.registry import EndpointConfig, EndpointRegistry
 from spark_ai_functions.endpoints.yaml_source import InMemoryEndpointSource
 
@@ -83,4 +83,70 @@ def test_ai_query_applies_response_format(monkeypatch):
         credential="k",
         response_format={"type": "json_object"},
     )
+    assert captured["response_format"] == {"type": "json_object"}
+
+
+def test_ai_classify_accepts_csv_labels(monkeypatch, governance_context):
+    captured = {}
+
+    def fake_core(**kwargs):
+        captured.update(kwargs)
+        return pd.Series(["ok"], index=kwargs["request_series"].index)
+
+    monkeypatch.setattr("spark_ai_functions.core.ai_query._core_ai_query", fake_core)
+    monkeypatch.setattr(
+        "spark_ai_functions.core.ai_query._packaged_preset",
+        lambda name: object(),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        "spark_ai_functions.core.ai_query.render_preset",
+        lambda preset, **kwargs: f"{kwargs['text']}::{kwargs['labels']}",  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        "spark_ai_functions.core.ai_query.response_format_for",
+        lambda preset, labels=None: {"type": "json_schema", "labels": labels},  # noqa: ARG005
+    )
+
+    out = ai_classify_impl(
+        "t-chat",
+        pd.Series(["hello"]),
+        pd.Series(["spam, ham"]),
+        registry=None,
+    )
+
+    assert out.tolist() == ["ok"]
+    assert captured["request_series"].tolist() == ["hello::spam,ham"]
+    assert captured["response_format"] == {"type": "json_schema", "labels": ["spam", "ham"]}
+
+
+def test_ai_extract_accepts_list_labels(monkeypatch, governance_context):
+    captured = {}
+
+    def fake_core(**kwargs):
+        captured.update(kwargs)
+        return pd.Series(["ok"], index=kwargs["request_series"].index)
+
+    monkeypatch.setattr("spark_ai_functions.core.ai_query._core_ai_query", fake_core)
+    monkeypatch.setattr(
+        "spark_ai_functions.core.ai_query._packaged_preset",
+        lambda name: object(),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        "spark_ai_functions.core.ai_query.render_preset",
+        lambda preset, **kwargs: f"{kwargs['text']}::{kwargs['labels']}",  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        "spark_ai_functions.core.ai_query.response_format_for",
+        lambda preset, labels=None: None,  # noqa: ARG005
+    )
+
+    out = ai_extract_impl(
+        "t-chat",
+        pd.Series(["x"]),
+        pd.Series([["person", "phone"]]),
+        registry=None,
+    )
+
+    assert out.tolist() == ["ok"]
+    assert captured["request_series"].tolist() == ["x::person,phone"]
     assert captured["response_format"] == {"type": "json_object"}
